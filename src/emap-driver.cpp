@@ -25,6 +25,7 @@
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/block.hpp>
+#include <mockturtle/utils/name_utils.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/cell_view.hpp>
 #include <mockturtle/views/names_view.hpp>
@@ -33,7 +34,7 @@ namespace {
 
 constexpr const char* kUsage =
     "vyges-emap --aig <in.aig> --genlib <tech.genlib> -o <out.v>\n"
-    "           [--multioutput] [--stats <stats.json>]\n"
+    "           [--multioutput] [--module <name>] [--stats <stats.json>]\n"
     "\n"
     "Multi-output technology mapping (mockturtle emap). AIGER + genlib in,\n"
     "mapped Verilog out. --multioutput maps cells ABC's single-output mapper\n"
@@ -57,6 +58,7 @@ int main(int argc, char** argv) {
   const std::string genlib_path = opt(argc, argv, "--genlib");
   const std::string out_path = opt(argc, argv, "-o");
   const std::string stats_path = opt(argc, argv, "--stats");
+  const std::string module = opt(argc, argv, "--module");  // output module name (AIGER carries none)
   const bool multioutput = has(argc, argv, "--multioutput");
 
   if (aig_path.empty() || genlib_path.empty() || out_path.empty()) {
@@ -88,6 +90,14 @@ int main(int argc, char** argv) {
   mockturtle::emap_stats st;
   mockturtle::cell_view<mockturtle::block_network> res = mockturtle::emap(aig, lib, ps, &st);
   mockturtle::names_view res_named{res};
+
+  // 3b. preserve module + PI/PO names from the input AIG so the remapped netlist
+  //     reads back cleanly (needs an AIGER with a symbol table — write_aiger -symbols).
+  mockturtle::restore_network_name(aig, res_named);
+  mockturtle::restore_pio_names_by_order(aig, res_named);
+  if (!module.empty()) {
+    res_named.set_network_name(module);  // AIGER has no module name; set it explicitly
+  }
 
   // 4. write the mapped netlist (multi-output cells → Verilog).
   mockturtle::write_verilog_with_cell(res_named, out_path);
