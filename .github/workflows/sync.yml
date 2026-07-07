@@ -1,0 +1,50 @@
+name: sync
+
+# mockturtle changes slowly, so we don't nightly-build — we just check daily
+# whether upstream `master` moved and, if so, open a PR bumping the pin in
+# upstream.yaml. Merging that PR is deliberate; a release is then cut on demand
+# via the release workflow. (No build here.)
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve mockturtle master HEAD vs pinned commit
+        id: r
+        run: |
+          HEAD=$(git ls-remote https://github.com/lsils/mockturtle.git HEAD | awk '{print $1}')
+          PIN=$(grep -E '^\s*commit:' upstream.yaml | awk '{print $2}')
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+          if [ "$HEAD" != "$PIN" ]; then echo "drift=true" >> "$GITHUB_OUTPUT"; else echo "drift=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Open PR to bump the pin
+        if: steps.r.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HEAD="${{ steps.r.outputs.head }}"; SHORT=$(echo "$HEAD" | cut -c1-12)
+          BR="sync/mockturtle-$SHORT"
+          if git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; then
+            echo "branch $BR already exists — PR likely open"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BR"
+          sed -i -E "s|^(\s*commit:\s*)[0-9a-f]+|\1$HEAD|" upstream.yaml
+          sed -i -E "s|^(\s*updated_at:\s*).*|\1\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" upstream.yaml
+          git add upstream.yaml
+          git commit -m "sync: bump mockturtle pin to $SHORT"
+          git push -u origin "$BR"
+          gh pr create --base main --head "$BR" \
+            --title "sync: bump mockturtle pin to $SHORT" \
+            --body "mockturtle \`master\` advanced to \`$HEAD\`. Merge to pin, then cut a release on demand via the release workflow."

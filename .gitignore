@@ -1,0 +1,4 @@
+# Build outputs — bundles + tarballs are published as release artifacts, never committed.
+/dist/
+/build/
+*.tar.gz

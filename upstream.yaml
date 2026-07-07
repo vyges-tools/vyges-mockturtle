@@ -1,0 +1,22 @@
+# vyges-mockturtle build pin — source of truth for what we build.
+#
+# Self-contained (vendors nothing in-tree): CI clones lsils/mockturtle at
+# `commit` and builds our MIT `vyges-emap` driver against it. A sync workflow
+# bumps `commit` when mockturtle `master` advances (opening a PR).
+upstream:
+  source: https://github.com/lsils/mockturtle
+  ref: master                                      # mockturtle's default branch
+  commit: 25beb0e294e4613bb9fe62319b91d9f2ab764e88 # bump to the OpenROAD-PR-#9097-vendored
+                                                   # commit for exact -9.86% parity (TODO: pin that SHA)
+  recurse_submodules: true                         # lib/kitty, lib/lorina
+  updated_at: "2026-07-07T20:18:23Z"
+
+license:
+  spdx: MIT                                        # mockturtle (EPFL); shipped with the binary as LICENSE.mockturtle
+
+build:
+  build_os: ubuntu:24.04                           # build host OS (glibc 2.39 tarball floor); NO published container
+  # Header-only C++17 lib + a small driver; deps are fmt + abseil (apt) — light.
+  driver: src/emap-driver.cpp
+  artifact: vyges-emap                             # x86_64 binary: netlist(AIGER)+genlib -> mapped Verilog
+  distribution: tarball                            # drops into the OpenROAD/flow container; no standalone image
