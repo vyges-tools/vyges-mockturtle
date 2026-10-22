@@ -6,10 +6,10 @@
 upstream:
   source: https://github.com/lsils/mockturtle
   ref: master                                      # mockturtle's default branch
-  commit: 25beb0e294e4613bb9fe62319b91d9f2ab764e88 # bump to the OpenROAD-PR-#9097-vendored
+  commit: 434c1ac9899c2fecd450abc89615e375f36e3a24 # bump to the OpenROAD-PR-#9097-vendored
                                                    # commit for exact -9.86% parity (TODO: pin that SHA)
   recurse_submodules: true                         # lib/kitty, lib/lorina
-  updated_at: "2026-07-07T20:18:23Z"
+  updated_at: "2026-10-22T11:34:01Z"
 
 license:
   spdx: MIT                                        # mockturtle (EPFL); shipped with the binary as LICENSE.mockturtle
