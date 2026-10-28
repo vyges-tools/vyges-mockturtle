@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest   # ubuntu 24.04 → glibc 2.39 tarball floor
+    runs-on: ubuntu-${{ vars.VYGES_UBUNTU_VERSION || '24.04' }}   # ubuntu 24.04 → glibc 2.39 tarball floor
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +33,14 @@ jobs:
           MT_COMMIT: ${{ steps.pin.outputs.commit }}
           VERSION: ${{ inputs.version }}
         run: bash scripts/build.sh
+
+      # Runner and glibc floor, one policy for every release: vyges-tools/actions.
+      - name: glibc ceiling
+        uses: vyges-tools/actions/glibc-ceiling@v1
+        with:
+          runner: ubuntu-${{ vars.VYGES_UBUNTU_VERSION || '24.04' }}
+          working-directory: .
+          paths: dist
 
       - name: Smoke the tarball
         run: bash scripts/smoke.sh "dist/vyges-mockturtle-${{ inputs.version }}-g${{ steps.pin.outputs.short }}"
